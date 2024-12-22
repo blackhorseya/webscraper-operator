@@ -31,7 +31,7 @@ type WebScraperSpec struct {
 
 	Schedule          string                      `json:"schedule,omitempty"`
 	Image             string                      `json:"image,omitempty"`
-	Command           string                      `json:"command,omitempty"`
+	Command           []string                    `json:"command,omitempty"`
 	Retries           int32                       `json:"retries,omitempty"`
 	ConcurrencyPolicy string                      `json:"concurrencyPolicy,omitempty"`
 	Resources         corev1.ResourceRequirements `json:"resources,omitempty"`

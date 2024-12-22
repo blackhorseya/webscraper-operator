@@ -40,7 +40,9 @@ spec:
             description: WebScraperSpec defines the desired state of WebScraper
             properties:
               command:
-                type: string
+                items:
+                  type: string
+                type: array
               concurrencyPolicy:
                 type: string
               image:
