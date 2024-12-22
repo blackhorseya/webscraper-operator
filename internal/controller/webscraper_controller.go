@@ -74,7 +74,8 @@ func (r *WebScraperReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 
 	// if the CronJob does not exist, create it
 	if errors.IsNotFound(err) {
-		newCronJob := generateCronJob(webScraper)
+		var newCronJob *sbatchv1.CronJob
+		newCronJob, err = generateCronJob(webScraper, r.Scheme)
 		if err = r.Create(ctx, newCronJob); err != nil {
 			logger.Error(err, "unable to create CronJob")
 			return ctrl.Result{}, err
@@ -98,8 +99,8 @@ func (r *WebScraperReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(r)
 }
 
-func generateCronJob(webScraper *batchv1.WebScraper) *sbatchv1.CronJob {
-	return &sbatchv1.CronJob{
+func generateCronJob(webScraper *batchv1.WebScraper, scheme *runtime.Scheme) (*sbatchv1.CronJob, error) {
+	cronJob := &sbatchv1.CronJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      webScraper.Name,
 			Namespace: webScraper.Namespace,
@@ -125,4 +126,11 @@ func generateCronJob(webScraper *batchv1.WebScraper) *sbatchv1.CronJob {
 			},
 		},
 	}
+
+	// 设置 OwnerReference
+	if err := ctrl.SetControllerReference(webScraper, cronJob, scheme); err != nil {
+		return nil, err
+	}
+
+	return cronJob, nil
 }
