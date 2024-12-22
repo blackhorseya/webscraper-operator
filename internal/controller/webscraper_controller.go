@@ -104,6 +104,11 @@ func (r *WebScraperReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	// Update WebScraper status based on Job status
 	for _, job := range jobList.Items {
 		if job.Status.Failed > 0 {
+			if err = r.Get(ctx, req.NamespacedName, webScraper); err != nil {
+				logger.Error(err, "unable to fetch WebScraper")
+				return ctrl.Result{}, client.IgnoreNotFound(err)
+			}
+
 			webScraper.Status.LastRunTime = metav1.Now()
 			webScraper.Status.Success = false
 			webScraper.Status.Message = "Task failed. Retrying..."
@@ -115,6 +120,11 @@ func (r *WebScraperReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		}
 
 		if job.Status.Succeeded > 0 {
+			if err = r.Get(ctx, req.NamespacedName, webScraper); err != nil {
+				logger.Error(err, "unable to fetch WebScraper")
+				return ctrl.Result{}, client.IgnoreNotFound(err)
+			}
+
 			webScraper.Status.LastRunTime = metav1.Now()
 			webScraper.Status.Success = true
 			webScraper.Status.Message = "Task succeeded"
@@ -128,6 +138,11 @@ func (r *WebScraperReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 
 	// Default status update if no Jobs are found
 	if len(jobList.Items) == 0 {
+		if err = r.Get(ctx, req.NamespacedName, webScraper); err != nil {
+			logger.Error(err, "unable to fetch WebScraper")
+			return ctrl.Result{}, client.IgnoreNotFound(err)
+		}
+
 		webScraper.Status.Message = "No jobs found for this CronJob"
 		if err := r.Status().Update(ctx, webScraper); err != nil {
 			logger.Error(err, "unable to update WebScraper status for no jobs")
@@ -142,6 +157,7 @@ func (r *WebScraperReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 func (r *WebScraperReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&batchv1.WebScraper{}).
+		Owns(&sbatchv1.CronJob{}).
 		Complete(r)
 }
 
@@ -170,7 +186,7 @@ func generateCronJob(webScraper *batchv1.WebScraper, scheme *runtime.Scheme) (*s
 									Resources: webScraper.Spec.Resources,
 								},
 							},
-							RestartPolicy: corev1.RestartPolicyOnFailure,
+							RestartPolicy: corev1.RestartPolicyNever,
 						},
 					},
 				},
