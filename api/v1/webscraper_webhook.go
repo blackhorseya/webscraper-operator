@@ -44,7 +44,9 @@ var _ webhook.Defaulter = &WebScraper{}
 func (r *WebScraper) Default() {
 	webscraperlog.Info("default", "name", r.Name)
 
-	// TODO(user): fill in your defaulting logic.
+	if r.Spec.Retries == 0 {
+		r.Spec.Retries = 3
+	}
 }
 
 // TODO(user): change verbs to "verbs=create;update;delete" if you want to enable deletion validation.
@@ -58,7 +60,18 @@ var _ webhook.Validator = &WebScraper{}
 func (r *WebScraper) ValidateCreate() (admission.Warnings, error) {
 	webscraperlog.Info("validate create", "name", r.Name)
 
-	// TODO(user): fill in your validation logic upon object creation.
+	if r.Spec.Retries < 0 {
+		return admission.Warnings{"Retries cannot be negative"}, nil
+	}
+
+	if r.Spec.Retries > 10 {
+		return admission.Warnings{"Retries cannot be greater than 10"}, nil
+	}
+
+	if r.Spec.Schedule == "" {
+		return admission.Warnings{"Schedule cannot be empty"}, nil
+	}
+
 	return nil, nil
 }
 
