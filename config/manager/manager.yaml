@@ -63,8 +63,11 @@ spec:
         args:
           - --leader-elect
           - --health-probe-bind-address=:8081
-        image: ghcr.io/blackhorseya/webscraper-operator:0.0.1
+        image: ghcr.io/blackhorseya/webscraper-operator:0.0.2
         name: manager
+        env:
+          - name: ENABLE_WEBHOOKS
+            value: "true"
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
