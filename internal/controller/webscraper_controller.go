@@ -91,6 +91,7 @@ func (r *WebScraperReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	}
 
 	webScraper.Status.LastRunTime = metav1.Now()
+	webScraper.Status.Success = true
 	if err = r.Status().Update(ctx, webScraper); err != nil {
 		logger.Error(err, "unable to update WebScraper status")
 		return ctrl.Result{}, err
