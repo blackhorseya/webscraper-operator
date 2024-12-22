@@ -74,8 +74,15 @@ func (r *WebScraperReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 
 	// if the CronJob does not exist, create it
 	if errors.IsNotFound(err) {
+		// generate the CronJob object
 		var newCronJob *sbatchv1.CronJob
 		newCronJob, err = generateCronJob(webScraper, r.Scheme)
+		if err != nil {
+			logger.Error(err, "unable to generate CronJob")
+			return ctrl.Result{}, err
+		}
+
+		// create the CronJob object
 		if err = r.Create(ctx, newCronJob); err != nil {
 			logger.Error(err, "unable to create CronJob")
 			return ctrl.Result{}, err
