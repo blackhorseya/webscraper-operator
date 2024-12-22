@@ -94,7 +94,7 @@ func (r *WebScraperReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	jobList := &sbatchv1.JobList{}
 	listOpts := []client.ListOption{
 		client.InNamespace(webScraper.Namespace),
-		client.MatchingLabels{"job-name": webScraper.Name},
+		client.MatchingLabels{"webscraper-name": webScraper.Name},
 	}
 	if err := r.List(ctx, jobList, listOpts...); err != nil {
 		logger.Error(err, "unable to list Jobs")
@@ -150,11 +150,14 @@ func generateCronJob(webScraper *batchv1.WebScraper, scheme *runtime.Scheme) (*s
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      webScraper.Name,
 			Namespace: webScraper.Namespace,
-			Labels:    map[string]string{"job-name": webScraper.Name},
+			Labels:    map[string]string{"webscraper-name": webScraper.Name},
 		},
 		Spec: sbatchv1.CronJobSpec{
 			Schedule: webScraper.Spec.Schedule,
 			JobTemplate: sbatchv1.JobTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: map[string]string{"webscraper-name": webScraper.Name},
+				},
 				Spec: sbatchv1.JobSpec{
 					BackoffLimit: ptr.To(webScraper.Spec.Retries),
 					Template: corev1.PodTemplateSpec{
