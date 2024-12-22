@@ -17,6 +17,7 @@ limitations under the License.
 package v1
 
 import (
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -28,14 +29,21 @@ type WebScraperSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
-	// Foo is an example field of WebScraper. Edit webscraper_types.go to remove/update
-	Foo string `json:"foo,omitempty"`
+	Schedule          string                      `json:"schedule,omitempty"`
+	Image             string                      `json:"image,omitempty"`
+	Command           string                      `json:"command,omitempty"`
+	Retries           int32                       `json:"retries,omitempty"`
+	ConcurrencyPolicy string                      `json:"concurrencyPolicy,omitempty"`
+	Resources         corev1.ResourceRequirements `json:"resources,omitempty"`
 }
 
 // WebScraperStatus defines the observed state of WebScraper
 type WebScraperStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
+
+	LastRunTime metav1.Time `json:"lastRunTime,omitempty"`
+	Success     bool        `json:"success,omitempty"`
 }
 
 // +kubebuilder:object:root=true
