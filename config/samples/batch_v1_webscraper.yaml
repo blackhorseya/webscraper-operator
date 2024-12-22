@@ -6,17 +6,17 @@ metadata:
     app.kubernetes.io/managed-by: kustomize
   name: webscraper-sample
 spec:
-  schedule: "*/1 * * * *" # 每分钟触发一次 CronJob
+  schedule: "*/1 * * * *" # 每分钟触发一次
   image: "busybox"
   command:
     - sh
     - -c
     - |
-      while true; do
-        if [ $((RANDOM % 2)) -eq 0 ]; then
-          echo "Success";
-        else
-          echo "Failure";
-        fi
-        sleep 5;
-      done
+      if [ $((RANDOM % 2)) -eq 0 ]; then
+        echo "Success";
+        exit 0;
+      else
+        echo "Failure";
+        exit 1;
+      fi
+  retries: 3

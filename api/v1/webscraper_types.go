@@ -44,6 +44,7 @@ type WebScraperStatus struct {
 
 	LastRunTime metav1.Time `json:"lastRunTime,omitempty"`
 	Success     bool        `json:"success,omitempty"`
+	Message     string      `json:"message,omitempty"`
 }
 
 // +kubebuilder:object:root=true

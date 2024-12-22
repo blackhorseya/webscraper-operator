@@ -25,6 +25,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/utils/pointer"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -43,6 +44,9 @@ type WebScraperReconciler struct {
 // +kubebuilder:rbac:groups=batch.seancheng.space,resources=webscrapers/finalizers,verbs=update
 // +kubebuilder:rbac:groups=batch,resources=cronjobs,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=batch,resources=cronjobs/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=batch,resources=jobs,verbs=get;list;watch
+// +kubebuilder:rbac:groups=batch,resources=jobs/status,verbs=get
+// +kubebuilder:rbac:groups=batch,resources=jobs,verbs=update;patch;delete
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -92,11 +96,42 @@ func (r *WebScraperReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		logger.Info("CronJob created successfully", "name", newCronJob.Name)
 	}
 
-	webScraper.Status.LastRunTime = metav1.Now()
-	webScraper.Status.Success = true
-	if err = r.Status().Update(ctx, webScraper); err != nil {
-		logger.Error(err, "unable to update WebScraper status")
+	// check the status of the CronJob
+	jobList := &sbatchv1.JobList{}
+	listOpts := []client.ListOption{
+		client.InNamespace(webScraper.Namespace),
+		client.MatchingLabels{"job-name": webScraper.Name},
+	}
+	if err = r.List(ctx, jobList, listOpts...); err != nil {
+		logger.Error(err, "unable to list Jobs", "cronJob", cronJob.Name)
 		return ctrl.Result{}, err
+	}
+
+	// update the status of the WebScraper object
+	for _, job := range jobList.Items {
+		if job.Status.Failed > 0 {
+			webScraper.Status.LastRunTime = metav1.Now()
+			webScraper.Status.Success = false
+			webScraper.Status.Message = "Task failed. Retrying..."
+			if err = r.Status().Update(ctx, webScraper); err != nil {
+				logger.Error(err, "unable to update WebScraper status for failed task")
+				return ctrl.Result{}, err
+			}
+
+			return ctrl.Result{}, nil // Stop further processing for this reconcile loop
+		}
+
+		if job.Status.Succeeded > 0 {
+			webScraper.Status.LastRunTime = metav1.Now()
+			webScraper.Status.Success = true
+			webScraper.Status.Message = "Task succeeded"
+			if err = r.Status().Update(ctx, webScraper); err != nil {
+				logger.Error(err, "unable to update WebScraper status for successful task")
+				return ctrl.Result{}, err
+			}
+
+			return ctrl.Result{}, nil // Stop further processing for this reconcile loop
+		}
 	}
 
 	return ctrl.Result{}, nil
@@ -119,6 +154,7 @@ func generateCronJob(webScraper *batchv1.WebScraper, scheme *runtime.Scheme) (*s
 			Schedule: webScraper.Spec.Schedule,
 			JobTemplate: sbatchv1.JobTemplateSpec{
 				Spec: sbatchv1.JobSpec{
+					BackoffLimit: pointer.Int32(webScraper.Spec.Retries),
 					Template: corev1.PodTemplateSpec{
 						Spec: corev1.PodSpec{
 							Containers: []corev1.Container{

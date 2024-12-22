@@ -114,6 +114,8 @@ spec:
               lastRunTime:
                 format: date-time
                 type: string
+              message:
+                type: string
               success:
                 type: boolean
             type: object

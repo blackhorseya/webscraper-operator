@@ -25,6 +25,23 @@ rules:
   - patch
   - update
 - apiGroups:
+  - batch
+  resources:
+  - jobs
+  verbs:
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - batch
+  resources:
+  - jobs/status
+  verbs:
+  - get
+- apiGroups:
   - batch.seancheng.space
   resources:
   - webscrapers
