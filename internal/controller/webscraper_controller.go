@@ -25,7 +25,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -60,77 +60,78 @@ type WebScraperReconciler struct {
 func (r *WebScraperReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
 
-	// get the WebScraper object
+	// Get the WebScraper object
 	webScraper := &batchv1.WebScraper{}
 	if err := r.Get(ctx, req.NamespacedName, webScraper); err != nil {
 		logger.Error(err, "unable to fetch WebScraper")
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	// get the CronJob object
+	// Get or create the CronJob
 	cronJob := &sbatchv1.CronJob{}
 	err := r.Get(ctx, types.NamespacedName{
 		Namespace: webScraper.Namespace,
 		Name:      webScraper.Name,
 	}, cronJob)
-	if err != nil && !errors.IsNotFound(err) {
-		logger.Error(err, "unable to fetch CronJob")
-		return ctrl.Result{}, err
-	}
-
-	// if the CronJob does not exist, create it
-	if errors.IsNotFound(err) {
-		// generate the CronJob object
+	if err != nil && errors.IsNotFound(err) {
 		var newCronJob *sbatchv1.CronJob
 		newCronJob, err = generateCronJob(webScraper, r.Scheme)
 		if err != nil {
 			logger.Error(err, "unable to generate CronJob")
 			return ctrl.Result{}, err
 		}
-
-		// create the CronJob object
 		if err = r.Create(ctx, newCronJob); err != nil {
 			logger.Error(err, "unable to create CronJob")
 			return ctrl.Result{}, err
 		}
 		logger.Info("CronJob created successfully", "name", newCronJob.Name)
-	}
-
-	// check the status of the CronJob
-	jobList := &sbatchv1.JobList{}
-	listOpts := []client.ListOption{
-		client.InNamespace(webScraper.Namespace),
-		client.MatchingLabels{"job-name": webScraper.Name},
-	}
-	if err = r.List(ctx, jobList, listOpts...); err != nil {
-		logger.Error(err, "unable to list Jobs", "cronJob", cronJob.Name)
+	} else if err != nil {
+		logger.Error(err, "unable to fetch CronJob")
 		return ctrl.Result{}, err
 	}
 
-	// update the status of the WebScraper object
+	// Check Jobs associated with the CronJob
+	jobList := &sbatchv1.JobList{}
+	listOpts := []client.ListOption{
+		client.InNamespace(webScraper.Namespace),
+		client.MatchingLabels{"webscraper-name": webScraper.Name},
+	}
+	if err := r.List(ctx, jobList, listOpts...); err != nil {
+		logger.Error(err, "unable to list Jobs")
+		return ctrl.Result{}, err
+	}
+
+	// Update WebScraper status based on Job status
 	for _, job := range jobList.Items {
 		if job.Status.Failed > 0 {
 			webScraper.Status.LastRunTime = metav1.Now()
 			webScraper.Status.Success = false
 			webScraper.Status.Message = "Task failed. Retrying..."
-			if err = r.Status().Update(ctx, webScraper); err != nil {
+			if err := r.Status().Update(ctx, webScraper); err != nil {
 				logger.Error(err, "unable to update WebScraper status for failed task")
 				return ctrl.Result{}, err
 			}
-
-			return ctrl.Result{}, nil // Stop further processing for this reconcile loop
+			return ctrl.Result{}, nil
 		}
 
 		if job.Status.Succeeded > 0 {
 			webScraper.Status.LastRunTime = metav1.Now()
 			webScraper.Status.Success = true
 			webScraper.Status.Message = "Task succeeded"
-			if err = r.Status().Update(ctx, webScraper); err != nil {
-				logger.Error(err, "unable to update WebScraper status for successful task")
+			if err := r.Status().Update(ctx, webScraper); err != nil {
+				logger.Error(err, "unable to update WebScraper status for succeeded task")
 				return ctrl.Result{}, err
 			}
+			return ctrl.Result{}, nil
+		}
+	}
 
-			return ctrl.Result{}, nil // Stop further processing for this reconcile loop
+	// Default status update if no Jobs are found
+	if len(jobList.Items) == 0 {
+		webScraper.Status.Message = "No jobs found for this CronJob"
+		if err := r.Status().Update(ctx, webScraper); err != nil {
+			logger.Error(err, "unable to update WebScraper status for no jobs")
+			return ctrl.Result{}, err
 		}
 	}
 
@@ -149,12 +150,13 @@ func generateCronJob(webScraper *batchv1.WebScraper, scheme *runtime.Scheme) (*s
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      webScraper.Name,
 			Namespace: webScraper.Namespace,
+			Labels:    map[string]string{"job-name": webScraper.Name},
 		},
 		Spec: sbatchv1.CronJobSpec{
 			Schedule: webScraper.Spec.Schedule,
 			JobTemplate: sbatchv1.JobTemplateSpec{
 				Spec: sbatchv1.JobSpec{
-					BackoffLimit: pointer.Int32(webScraper.Spec.Retries),
+					BackoffLimit: ptr.To(webScraper.Spec.Retries),
 					Template: corev1.PodTemplateSpec{
 						Spec: corev1.PodSpec{
 							Containers: []corev1.Container{
