@@ -1,0 +1,9 @@
+apiVersion: batch.seancheng.space/v1
+kind: WebScraper
+metadata:
+  labels:
+    app.kubernetes.io/name: webscraper-operator
+    app.kubernetes.io/managed-by: kustomize
+  name: webscraper-sample
+spec:
+  # TODO(user): Add fields here

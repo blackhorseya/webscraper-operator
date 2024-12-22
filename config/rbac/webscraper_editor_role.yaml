@@ -1,8 +1,11 @@
----
+# permissions for end users to edit webscrapers.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: manager-role
+  labels:
+    app.kubernetes.io/name: webscraper-operator
+    app.kubernetes.io/managed-by: kustomize
+  name: webscraper-editor-role
 rules:
 - apiGroups:
   - batch.seancheng.space
@@ -19,14 +22,6 @@ rules:
 - apiGroups:
   - batch.seancheng.space
   resources:
-  - webscrapers/finalizers
-  verbs:
-  - update
-- apiGroups:
-  - batch.seancheng.space
-  resources:
   - webscrapers/status
   verbs:
   - get
-  - patch
-  - update

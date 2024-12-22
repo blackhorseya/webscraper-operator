@@ -10,4 +10,14 @@ plugins:
   scorecard.sdk.operatorframework.io/v2: {}
 projectName: webscraper-operator
 repo: github.com/blackhorseya/webscraper-operator
+resources:
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: seancheng.space
+  group: batch
+  kind: WebScraper
+  path: github.com/blackhorseya/webscraper-operator/api/v1
+  version: v1
 version: "3"

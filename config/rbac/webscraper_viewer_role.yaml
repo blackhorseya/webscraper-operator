@@ -1,32 +1,23 @@
----
+# permissions for end users to view webscrapers.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: manager-role
+  labels:
+    app.kubernetes.io/name: webscraper-operator
+    app.kubernetes.io/managed-by: kustomize
+  name: webscraper-viewer-role
 rules:
 - apiGroups:
   - batch.seancheng.space
   resources:
   - webscrapers
   verbs:
-  - create
-  - delete
   - get
   - list
-  - patch
-  - update
   - watch
-- apiGroups:
-  - batch.seancheng.space
-  resources:
-  - webscrapers/finalizers
-  verbs:
-  - update
 - apiGroups:
   - batch.seancheng.space
   resources:
   - webscrapers/status
   verbs:
   - get
-  - patch
-  - update
