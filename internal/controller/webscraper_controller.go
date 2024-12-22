@@ -94,7 +94,7 @@ func (r *WebScraperReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	jobList := &sbatchv1.JobList{}
 	listOpts := []client.ListOption{
 		client.InNamespace(webScraper.Namespace),
-		client.MatchingLabels{"webscraper-name": webScraper.Name},
+		client.MatchingLabels{"job-name": webScraper.Name},
 	}
 	if err := r.List(ctx, jobList, listOpts...); err != nil {
 		logger.Error(err, "unable to list Jobs")
